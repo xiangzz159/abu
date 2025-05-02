@@ -14,15 +14,18 @@ import os
 import random
 import math
 import sqlite3 as sqlite
+import json
+import akshare as ak
 
 import pandas as pd
+import numpy as np
 
 from ..CoreBu.ABuEnv import EMarketTargetType, EMarketSubType
 from ..CoreBu import ABuEnv
 from ..MarketBu import ABuNetWork
 from ..MarketBu.ABuDataBase import StockBaseMarket, SupportMixin, FuturesBaseMarket, TCBaseMarket
-from ..MarketBu.ABuDataParser import BDParser, TXParser, NTParser, SNUSParser
-from ..MarketBu.ABuDataParser import SNFuturesParser, SNFuturesGBParser, HBTCParser
+from ..MarketBu.ABuDataParser import AkShareParser, TXParser, NTParser, SNUSParser
+from ..MarketBu.ABuDataParser import SNFuturesParser, SNFuturesGBParser, BNTCParser
 from ..UtilBu import ABuStrUtil, ABuDateUtil, ABuMd5
 from ..UtilBu.ABuDTUtil import catch_error
 from ..CoreBu.ABuDeprecated import AbuDeprecated
@@ -82,79 +85,57 @@ def query_symbol_from_pinyin(pinyin):
         return code[start:end]
 
 
-class BDApi(StockBaseMarket, SupportMixin):
-    """bd数据源，支持港股，美股，a股"""
-
-    K_NET_CONNECT_START = '&start='
-    K_NET_DAY = 'http://gp.baidu.com:80/stocks/stockkline?from=android&os_ver=21&format=json&vv=3.3.0' \
-                '&uid=&BDUSS=&cuid=%s&channel=default_channel&device=%s&logid=%s&actionid=%s&device_net_type' \
-                '=wifi&period=day&stock_code=%s&fq_type=front'
-
-    MINUTE_NET_5D = 'http://gp.baidu.com:80/stocks/stocktimelinefive?from=android&os_ver=21&format=json' \
-                    '&vv=3.3&uid=&BDUSS=&cuid=%s&channel=default_channel&device=%s&logid=%s&actionid=%s' \
-                    '&device_net_type=wifi&stock_code=%s&step=10'
-
+class AkShareApi(StockBaseMarket, SupportMixin):
     def __init__(self, symbol):
         """
         :param symbol: Symbol类型对象
         """
-        super(BDApi, self).__init__(symbol)
-        self._action_id = int(ABuDateUtil.time_seconds())
-        self._version2_log_cnt = 0
-        self.data_parser_cls = BDParser
+        super(AkShareApi, self).__init__(symbol)
+        # 设置数据源解析对象类
+        self.data_parser_cls = AkShareParser
 
-    def kline(self, n_folds=2, start=None, end=None):
-        """日k线接口"""
-        self._version2_log_cnt += 1
-        log_id = self._action_id + self._version2_log_cnt * 66
-        cuid = ABuStrUtil.create_random_with_num_low(40)
-        device = random_from_list(StockBaseMarket.K_DEV_MODE_LIST)
-        url = BDApi.K_NET_DAY % (cuid, device, str(log_id), str(self._action_id), self._symbol.value)
-        # logging.info(url)
-        next_start = None
-        kl_df = None
-        if start:
-            # 需重新计算n_fold
-            days = ABuDateUtil.diff(start, ABuDateUtil.current_str_date(), check_order=False)
-            # 每次返回300条数据
-            n_folds = int(days / 300.0)
+    def minute(self, *args, **kwargs):
+        pass
 
-        for _ in xrange(0, n_folds):
-            if next_start:
-                url = url + BDApi.K_NET_CONNECT_START + str(next_start)
-            # logging.info(url)
-            data = ABuNetWork.get(url=url, timeout=K_TIME_OUT)
-            temp_df = None
-            if data is not None:
-                temp_df = self.data_parser_cls(self._symbol, data.json()).df
+    def kline(self, n_folds=2, start=None, end=None, period=None):
+        """
 
-            if temp_df is not None:
-                next_start = int(temp_df.loc[temp_df.index[0], ['date']].values[0])
-            kl_df = temp_df if kl_df is None else pd.concat([temp_df, kl_df])
-            # 因为是从前向后请求，且与时间无关，所以可以直接在for里面中断
-            if kl_df is None:
-                return None
+        Parameters
+        ----------
+        n_folds
+        start
+        end
+        period: {'daily', 'weekly', 'monthly'}
 
-            """由于每次放回300条>1年的数据，所以超出总数就不再请求下一组"""
-            if kl_df.shape[0] > ABuEnv.g_market_trade_year * n_folds:
-                break
+        Returns
+        -------
 
-        return StockBaseMarket._fix_kline_pd(kl_df, n_folds, start, end)
+        """
+        symbol = self._symbol.symbol_code
+        period = 'daily' if period is None else period
+        stock_df = None
+        kl_pd = None
+        if self._symbol.market == EMarketTargetType.E_MARKET_TARGET_US:
+            stock_df = ak.stock_us_daily(symbol=symbol)
+            days = ABuEnv.g_market_trade_year * n_folds + 1
+            stock_df = stock_df[-days:]
 
-    def minute(self, n_folds=5, *args, **kwargs):
-        self._version2_log_cnt += 1
-        cuid = ABuStrUtil.create_random_with_num_low(40)
-        log_id = self._action_id + self._version2_log_cnt * 66
-        device = random_from_list(StockBaseMarket.K_DEV_MODE_LIST)
-        url = BDApi.MINUTE_NET_5D % (cuid, device, str(log_id), str(self._action_id), self._symbol.value)
+        elif self._symbol.market == EMarketTargetType.E_MARKET_TARGET_CN:
+            stock_df = ak.stock_zh_a_hist(symbol=symbol, period=period, start_date=start, adjust="")
+            # stock_df = ak.stock_zh_a_hist(symbol=symbol, period="daily", start_date="20210301", adjust="")
+        elif self._symbol.market == EMarketTargetType.E_MARKET_TARGET_HK:
+            stock_df = ak.stock_hk_hist(symbol=symbol, period=period, start_date=start, end_date=end)
 
-        return ABuNetWork.get(url=url, timeout=K_TIME_OUT).json()
+        if stock_df is not None:
+            kl_pd = self.data_parser_cls(self._symbol, stock_df).df
+
+        return StockBaseMarket._fix_kline_pd(kl_pd, n_folds, start, end)
 
 
 class TXApi(StockBaseMarket, SupportMixin):
     """tx数据源，支持港股，美股，a股"""
 
-    K_NET_BASE = "http://ifzq.gtimg.cn/appstock/app/%sfqkline/get?p=1&param=%s,day,,,%d," \
+    K_NET_BASE = "http://web.ifzq.gtimg.cn/appstock/app/fqkline/get?p=1&param=%s,day,,,%d," \
                  "qfq&_appName=android&_dev=%s&_devId=%s&_mid=%s&_md5mid=%s&_appver=4.2.2&_ifChId=303&_screenW=%d" \
                  "&_screenH=%d&_osVer=%s&_uin=10000&_wxuin=20000&__random_suffix=%d"
 
@@ -176,7 +157,7 @@ class TXApi(StockBaseMarket, SupportMixin):
         # 设置数据源解析对象类
         self.data_parser_cls = TXParser
 
-    def kline(self, n_folds=2, start=None, end=None):
+    def kline(self, n_folds=2, start=None, end=None, period=None):
         """日k线接口"""
         cuid = ABuStrUtil.create_random_with_num_low(40)
         cuid_md5 = ABuMd5.md5_from_binary(cuid)
@@ -210,17 +191,17 @@ class TXApi(StockBaseMarket, SupportMixin):
                                   EMarketSubType.US_OQ.value: 'oq'}
                 sub_market = '.{}'.format(sub_market_map[self._symbol.sub_market.value])
             url = TXApi.K_NET_BASE % (
-                market, self._symbol.value + sub_market, days,
+                self._symbol.value + sub_market, days,
                 dev_mod, cuid, cuid, cuid_md5, screen[0], screen[1], os_ver, int(random_suffix, 10))
         elif self._symbol.market == EMarketTargetType.E_MARKET_TARGET_HK:
             market = self._symbol.market.value
             url = TXApi.K_NET_BASE % (
-                market, self._symbol.value, days,
+                self._symbol.value, days,
                 dev_mod, cuid, cuid, cuid_md5, screen[0], screen[1], os_ver, int(random_suffix, 10))
         else:
             market = ''
             url = TXApi.K_NET_BASE % (
-                market, self._symbol.value, days,
+                self._symbol.value, days,
                 dev_mod, cuid, cuid, cuid_md5, screen[0], screen[1], os_ver, int(random_suffix, 10))
 
         data = ABuNetWork.get(url, timeout=K_TIME_OUT)
@@ -265,7 +246,7 @@ class NTApi(StockBaseMarket, SupportMixin):
         # 设置数据源解析对象类
         self.data_parser_cls = NTParser
 
-    def kline(self, n_folds=2, start=None, end=None):
+    def kline(self, n_folds=2, start=None, end=None, period=None):
         """日k线接口"""
         kl_df = None
         if start is None or end is None:
@@ -330,7 +311,7 @@ class SNUSApi(StockBaseMarket, SupportMixin):
         """声明数据源支持美股"""
         return [EMarketTargetType.E_MARKET_TARGET_US]
 
-    def kline(self, n_folds=2, start=None, end=None):
+    def kline(self, n_folds=2, start=None, end=None, period=None):
         """日k线接口"""
         url = SNUSApi.K_NET_BASE % self._symbol.symbol_code
         data = ABuNetWork.get(url=url, timeout=K_TIME_OUT).json()
@@ -362,7 +343,7 @@ class SNFuturesApi(FuturesBaseMarket, SupportMixin):
         """声明数据源支持期货数据"""
         return [EMarketTargetType.E_MARKET_TARGET_FUTURES_CN]
 
-    def kline(self, n_folds=2, start=None, end=None):
+    def kline(self, n_folds=2, start=None, end=None, period=None):
         """日k线接口"""
         url = SNFuturesApi.K_NET_BASE % self._symbol.symbol_code
         data = ABuNetWork.get(url=url, timeout=K_TIME_OUT).json()
@@ -390,7 +371,7 @@ class SNFuturesGBApi(FuturesBaseMarket, SupportMixin):
         """声明数据源支持期货数据, 支持国际期货市场"""
         return [EMarketTargetType.E_MARKET_TARGET_FUTURES_GLOBAL]
 
-    def kline(self, n_folds=2, start=None, end=None):
+    def kline(self, n_folds=2, start=None, end=None, period=None):
         """日k线接口"""
         today = ABuDateUtil.current_str_date().replace('-', '_')
         url = SNFuturesGBApi.K_NET_BASE % (self._symbol.symbol_code, today, self._symbol.symbol_code, today)
@@ -404,39 +385,38 @@ class SNFuturesGBApi(FuturesBaseMarket, SupportMixin):
         return FuturesBaseMarket._fix_kline_pd(kl_df, n_folds, start, end)
 
 
-class HBApi(TCBaseMarket, SupportMixin):
-    """hb数据源，支持币类，比特币，莱特币"""
+class BNApi(TCBaseMarket, SupportMixin):
+    """binance数据源，支持币类，比特币，莱特币"""
 
-    K_NET_BASE = 'https://www.huobi.com/qt/staticmarket/%s_kline_100_json.js?length=%d'
+    K_NET_BASE = 'https://api.binance.com/api/v3/klines?symbol=%s&interval=%s&limit=1000'
 
     def __init__(self, symbol):
         """
         :param symbol: Symbol类型对象
         """
-        super(HBApi, self).__init__(symbol)
+        super(BNApi, self).__init__(symbol)
         # 设置数据源解析对象类
-        self.data_parser_cls = HBTCParser
+        self.data_parser_cls = BNTCParser
 
     def _support_market(self):
         """只支持币类市场"""
         return [EMarketTargetType.E_MARKET_TARGET_TC]
 
-    def kline(self, n_folds=2, start=None, end=None):
-        """日k线接口"""
-        req_cnt = n_folds * ABuEnv.g_market_trade_year
-        if start is not None and end is not None:
-            # 向上取整数，下面使用_fix_kline_pd再次进行剪裁, 要使用current_str_date不能是end
-            folds = math.ceil(ABuDateUtil.diff(ABuDateUtil.date_str_to_int(start),
-                                               ABuDateUtil.current_str_date()) / 365)
-            req_cnt = folds * ABuEnv.g_market_trade_year
+    def kline(self, start=None, end=None, n_folds=None, period=None):
+        symbol = self._symbol.symbol_code.upper().replace('/', '')
+        period = '4H' if period is None else period
+        url = BNApi.K_NET_BASE % (symbol, period)
+        if start is not None:
+            url += '&startTime=' + str(start)
+        if end is not None:
+            url += '&endTime=' + str(end)
 
-        url = HBApi.K_NET_BASE % (self._symbol.symbol_code, req_cnt)
-        data = ABuNetWork.get(url=url, timeout=K_TIME_OUT).json()
+        data = json.loads(ABuNetWork.get(url=url, timeout=K_TIME_OUT).text)
         kl_df = self.data_parser_cls(self._symbol, data).df
         if kl_df is None:
             return None
-        return TCBaseMarket._fix_kline_pd(kl_df, n_folds, start, end)
+        return TCBaseMarket._fix_kline_pd(kl_df, 2, start, end)
 
     def minute(self, *args, **kwargs):
         """分钟k线接口"""
-        raise NotImplementedError('HBApi minute NotImplementedError!')
+        raise NotImplementedError('BNApi minute NotImplementedError!')

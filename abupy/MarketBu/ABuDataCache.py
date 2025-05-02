@@ -398,7 +398,7 @@ def save_kline_df(df, temp_symbol, start_int, end_int):
         dump_kline_df(df, temp_symbol.value, df_key)
 
 
-def load_kline_df_net(source, temp_symbol, n_folds, start, end, start_int, end_int, save):
+def load_kline_df_net(source, temp_symbol, n_folds, start, end, start_int, end_int, save, period):
     """
     通过网络请求数据源，获取temp_symbol以及参数时间日期对应的金融时间序列pd.DataFrame对象
     :param source: 数据源BaseMarket的子类，非实例化对象
@@ -409,6 +409,7 @@ def load_kline_df_net(source, temp_symbol, n_folds, start, end, start_int, end_i
     :param start_int: 开始回测日期，int
     :param end_int: 结束回测日期，int
     :param save: 是否从网络成功获取数据后进行数据的保存
+    :param period:数字货币时间间隔
     """
     df = None
     # 实例化数据源对象
@@ -416,7 +417,7 @@ def load_kline_df_net(source, temp_symbol, n_folds, start, end, start_int, end_i
 
     if data_source.check_support():
         # 通过数据源混入的SupportMixin类检测数据源是否支持temp_symbol对应的市场数据
-        df = data_source.kline(n_folds=n_folds, start=start, end=end)
+        df = data_source.kline(n_folds=n_folds, start=start, end=end, period=period)
 
     if df is not None and save:
         """

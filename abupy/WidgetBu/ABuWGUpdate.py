@@ -47,27 +47,27 @@ class WidgetUpdate(WidgetBase, WidgetTimeModeMixin):
         """数据源进行切换"""
         self.data_source_accordion = widgets.Accordion()
         date_source_dict_us = OrderedDict({
+            u'AkShare数据源((美股，A股，港股)': EMarketSourceType.E_MARKET_SOURCE_akshare.value,
             u'腾讯数据源(美股，A股，港股)': EMarketSourceType.E_MARKET_SOURCE_tx.value,
-            u'百度数据源(美股，A股，港股)': EMarketSourceType.E_MARKET_SOURCE_bd.value,
             u'新浪美股(美股)': EMarketSourceType.E_MARKET_SOURCE_sn_us.value,
             u'网易数据源(美股，A股，港股)': EMarketSourceType.E_MARKET_SOURCE_nt.value,
         })
 
         date_source_dict_cn = OrderedDict({
-            u'百度数据源(美股，A股，港股)': EMarketSourceType.E_MARKET_SOURCE_bd.value,
+            u'AkShare数据源((美股，A股，港股)': EMarketSourceType.E_MARKET_SOURCE_akshare.value,
             u'腾讯数据源(美股，A股，港股)': EMarketSourceType.E_MARKET_SOURCE_tx.value,
             u'网易数据源(美股，A股，港股)': EMarketSourceType.E_MARKET_SOURCE_nt.value
         })
 
         date_source_dict_hk = OrderedDict({
+            u'AkShare数据源((美股，A股，港股)': EMarketSourceType.E_MARKET_SOURCE_akshare.value,
             u'网易数据源(美股，A股，港股)': EMarketSourceType.E_MARKET_SOURCE_nt.value,
-            u'腾讯数据源(美股，A股，港股)': EMarketSourceType.E_MARKET_SOURCE_tx.value,
-            u'百度数据源(美股，A股，港股)': EMarketSourceType.E_MARKET_SOURCE_bd.value
+            u'腾讯数据源(美股，A股，港股)': EMarketSourceType.E_MARKET_SOURCE_tx.value
         })
 
         date_source_dict_futures_cn = {u'新浪国内期货(国内期货)': EMarketSourceType.E_MARKET_SOURCE_sn_futures.value}
         date_source_dict_futures_gb = {u'新浪国际期货(国际期货)': EMarketSourceType.E_MARKET_SOURCE_sn_futures_gb.value}
-        date_source_dict_futures_tc = {u'火币网：比特币，莱特币': EMarketSourceType.E_MARKET_SOURCE_hb_tc.value}
+        date_source_dict_futures_tc = {u'币安：比特币，莱特币': EMarketSourceType.E_MARKET_SOURCE_bn_tc.value}
 
         self.date_source_market_map = {
             EMarketTargetType.E_MARKET_TARGET_US.value: date_source_dict_us,

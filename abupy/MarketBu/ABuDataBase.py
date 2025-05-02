@@ -151,8 +151,20 @@ class StockBaseMarket(six.with_metaclass(ABCMeta, BaseMarket)):
         pass
 
     @abstractmethod
-    def kline(self, n_folds=2, start=None, end=None):
-        """日k线接口"""
+    def kline(self, n_folds=2, start=None, end=None, period=None):
+        """
+        日k线接口
+        Parameters
+        ----------
+        n_folds
+        start
+        end
+        period:
+
+        Returns
+        -------
+
+        """
         pass
 
     @classmethod
@@ -165,7 +177,7 @@ class FuturesBaseMarket(six.with_metaclass(ABCMeta, BaseMarket)):
     """基于期货类型的数据源抽象基类"""
 
     @abstractmethod
-    def kline(self, n_folds=2, start=None, end=None):
+    def kline(self, n_folds=2, start=None, end=None, period=None):
         """日k线接口"""
         pass
 
@@ -181,8 +193,25 @@ class TCBaseMarket(six.with_metaclass(ABCMeta, BaseMarket)):
     """基于比特币，莱特币等类型的数据源抽象基类"""
 
     @abstractmethod
-    def kline(self, n_folds=2, start=None, end=None):
-        """日k线接口"""
+    def kline(self, start=None, end=None, period='4h'):
+        """
+        日k线接口
+        Parameters
+        ----------
+        period: 时间间隔
+            seconds -> 秒	1s
+            minutes -> 分钟	1m， 3m， 5m， 15m， 30m
+            hours -> 小时	1h， 2h， 4h， 6h， 8h， 12h
+            days -> 天	1d， 3d
+            weeks -> 周	1w
+            months -> 月	1M
+        start long
+        end long
+
+        Returns
+        -------
+
+        """
         pass
 
     @abstractmethod

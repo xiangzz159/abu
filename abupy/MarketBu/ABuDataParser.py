@@ -11,6 +11,7 @@ import logging
 
 import numpy as np
 import pandas as pd
+import datetime
 
 from .ABuSymbol import EMarketTargetType
 from ..CoreBu.ABuFixes import six
@@ -117,6 +118,43 @@ class AbuDataParseWrap(object):
             # 给df加上name
             warp_self.df.name = symbol
 
+@AbuDataParseWrap()
+class AkShareParser(object):
+    """tx数据源解析类，被类装饰器AbuDataParseWrap装饰"""
+
+    def __init__(self, symbol, stock_df):
+        """
+        :param symbol: 请求的symbol str对象
+        :param stock_df: 请求返回的原始数据
+        """
+        # 为AbuDataParseWrap准备类必须的属性序列
+        if len(stock_df) > 0:
+            if symbol.market == EMarketTargetType.E_MARKET_TARGET_US:
+                # 时间日期序列，时间格式为2017-07-26格式字符串
+                self.date = stock_df['date'].dt.date.values
+                # 开盘价格序列
+                self.open = stock_df['open'].values
+                # 收盘价格序列
+                self.close = stock_df['close'].values
+                # 最高价格序列
+                self.high = stock_df['high'].values
+                # 最低价格序列
+                self.low = stock_df['low'].values
+                # 成交量序列
+                self.volume = stock_df['volume'].values
+            else:
+                # 时间日期序列，时间格式为2017-07-26格式字符串
+                self.date = stock_df['日期'].values
+                # 开盘价格序列
+                self.open = stock_df['开盘'].values
+                # 收盘价格序列
+                self.close = stock_df['收盘'].values
+                # 最高价格序列
+                self.high = stock_df['最高'].values
+                # 最低价格序列
+                self.low = stock_df['最低'].values
+                # 成交量序列
+                self.volume = stock_df['成交量'].values
 
 @AbuDataParseWrap()
 class TXParser(object):
@@ -263,7 +301,7 @@ class SNFuturesGBParser(object):
 
 
 @AbuDataParseWrap()
-class HBTCParser(object):
+class BNTCParser(object):
     """示例币类市场数据源解析类，被类装饰器AbuDataParseWrap装饰"""
 
     # noinspection PyUnusedLocal
@@ -288,66 +326,16 @@ class HBTCParser(object):
             self.close = [item[4] for item in data]
             # 成交量序列
             self.volume = [item[5] for item in data]
+            # 成交额
+            self.amount = [item[7] for item in data]
+            # 成交笔数
+            self.trade_count = [item[8] for item in data]
+            # 主动买入成交量
+            self.market_vol = [item[9] for item in data]
+            # 主动买入成交额
+            self.market_amt = [item[10] for item in data]
 
             # 时间日期进行格式转化，转化为如2017-07-26格式字符串
             self.date = list(map(lambda date: ABuDateUtil.fmt_date(date), self.date))
 
 
-class BDParser(object):
-    """bd数据源解析类"""
-
-    data_keys = ['data', 'dataMash']
-    s_calc_dm = True
-
-    def __init__(self, symbol, json_dict):
-        """
-        没有使用AbuDataParseWrap装饰类，保留一个原始的解析流程类，
-        其它的解析类都使用AbuDataParseWrap装饰类，解析过程不做多注解，
-        详阅读AbuDataParseWrap的实现
-        :param symbol: 请求的symbol str对象
-        :param json_dict: 请求返回的json数据
-        """
-        try:
-            if BDParser.data_keys[0] in json_dict.keys():
-                self.data = json_dict[BDParser.data_keys[0]][::-1]
-            elif BDParser.data_keys[1] in json_dict.keys():
-                self.data = json_dict[BDParser.data_keys[1]][::-1]
-            else:
-                raise ValueError('content not json format')
-
-            dates = [mash['date'] for mash in self.data]
-            klines = [mash['kline'] for mash in self.data]
-
-            self.df = None
-            if len(klines) > 0 and len(dates) > 0:
-                dates_fmt = list(map(lambda date: ABuDateUtil.fmt_date(date), dates))
-                dates_pd = pd.to_datetime(dates_fmt)
-
-                self.df = pd.DataFrame(klines, index=dates_pd)
-                self.df['date'] = dates
-                self.df['date_week'] = self.df['date'].apply(lambda x: ABuDateUtil.week_of_date(str(x), '%Y%m%d'))
-
-                self.df['close'] = self.df['close'].astype(float)
-                self.df['high'] = self.df['high'].astype(float)
-                self.df['low'] = self.df['low'].astype(float)
-                self.df['open'] = self.df['open'].astype(float)
-                self.df['volume'] = self.df['volume'].astype(np.int64)
-                self.df['date'] = self.df['date'].astype(int)
-                self.df['netChangeRatio'] = self.df['netChangeRatio'].map(lambda x: x[:-1]).astype(float)
-                self.df['preClose'] = self.df['preClose'].astype(float)
-                self.df.rename(columns={'preClose': 'pre_close', 'netChangeRatio': 'p_change'}, inplace=True)
-                del_columns(self.df, ['amount'])
-                if BDParser.s_calc_dm:
-                    self.df['pre_close'] = self.df['close'].shift(1)
-                    self.df['pre_close'].fillna(self.df['open'], axis=0, inplace=True)
-                    # 不使用df['close'].pct_change计算
-                    # noinspection PyTypeChecker
-                    self.df['p_change'] = np.where(self.df['pre_close'] == 0, 0,
-                                                   (self.df['close'] - self.df['pre_close']) / self.df[
-                                                       'pre_close'] * 100)
-                    self.df['p_change'] = self.df['p_change'].apply(lambda x: round(x, 3))
-
-                self.df.name = symbol
-
-        except Exception as e:
-            logging.exception(e)

@@ -197,8 +197,8 @@ class WidgetSearchBox(WidgetBase):
         self.search_bt.on_click(self._do_search)
 
         # 搜索框 ＋ 按钮 ＋ 结果框 box拼接
-        sc_hb = widgets.HBox([self.search_bt, self.search_input])
-        self.widget = widgets.VBox([sc_hb, self.search_result])
+        sc_bn = widgets.HBox([self.search_bt, self.search_input])
+        self.widget = widgets.VBox([sc_bn, self.search_result])
 
     # noinspection PyUnusedLocal
     def _do_search(self, bt):

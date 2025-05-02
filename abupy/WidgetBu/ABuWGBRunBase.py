@@ -68,15 +68,16 @@ class WidgetEnvSetMixin(object):
 
         """数据源进行切换"""
         self.data_source_accordion = widgets.Accordion()
-        self.date_source_dict = {EMarketSourceType.E_MARKET_SOURCE_bd.value: u'百度数据源(美股，A股，港股)',
-                                 EMarketSourceType.E_MARKET_SOURCE_tx.value: u'腾讯数据源(美股，A股，港股)',
-                                 EMarketSourceType.E_MARKET_SOURCE_nt.value: u'网易数据源(美股，A股，港股)',
-                                 EMarketSourceType.E_MARKET_SOURCE_sn_us.value: u'新浪美股(美股)',
-                                 EMarketSourceType.E_MARKET_SOURCE_sn_futures.value: u'新浪国内期货(国内期货)',
-                                 EMarketSourceType.E_MARKET_SOURCE_sn_futures_gb.value: u'新浪国际期货(国际期货)',
-                                 EMarketSourceType.E_MARKET_SOURCE_hb_tc.value: u'比特币，莱特币'}
+        self.date_source_dict = {
+            EMarketSourceType.E_MARKET_SOURCE_akshare.value: u'AkShare数据源(美股，A股，港股)',
+            EMarketSourceType.E_MARKET_SOURCE_tx.value: u'腾讯数据源(美股，A股，港股)',
+            EMarketSourceType.E_MARKET_SOURCE_nt.value: u'网易数据源(美股，A股，港股)',
+            EMarketSourceType.E_MARKET_SOURCE_sn_us.value: u'新浪美股(美股)',
+            EMarketSourceType.E_MARKET_SOURCE_sn_futures.value: u'新浪国内期货(国内期货)',
+            EMarketSourceType.E_MARKET_SOURCE_sn_futures_gb.value: u'新浪国际期货(国际期货)',
+            EMarketSourceType.E_MARKET_SOURCE_bn_tc.value: u'比特币，莱特币'}
         self.date_source = widgets.RadioButtons(
-            options=[u'百度数据源(美股，A股，港股)', u'腾讯数据源(美股，A股，港股)', u'网易数据源(美股，A股，港股)',
+            options=[u'腾讯数据源(美股，A股，港股)', u'网易数据源(美股，A股，港股)',
                      u'新浪美股(美股)', u'新浪国内期货(国内期货)', u'新浪国际期货(国际期货)',
                      u'比特币，莱特币'],
             value=self.date_source_dict[ABuEnv.g_market_source.value],
@@ -116,7 +117,7 @@ class WidgetEnvSetMixin(object):
             accordion_shut(self.data_source_accordion)
         else:
             if ABuFileUtil.file_exist(ABuEnv.g_project_kl_df_data_csv) and \
-                            len(os.listdir(ABuEnv.g_project_kl_df_data_csv)) > 5000:
+                    len(os.listdir(ABuEnv.g_project_kl_df_data_csv)) > 5000:
                 # 如果有很多缓存数据，从沙盒改变依然网络模式是本地模式
                 ABuEnv._g_enable_example_env_ipython = False
             else:

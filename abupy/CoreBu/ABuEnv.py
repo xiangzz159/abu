@@ -207,8 +207,8 @@ class EMarketSourceType(Enum):
     """
         数据源，当数据获取不可靠时，可尝试切换数据源，更可连接私有的数据源
     """
-    """百度 a股，美股，港股"""
-    E_MARKET_SOURCE_bd = 0
+    """AkShare: https://akshare.akfamily.xyz/"""
+    E_MARKET_SOURCE_akshare = 0
     """腾讯 a股，美股，港股"""
     E_MARKET_SOURCE_tx = 1
     """网易 a股，美股，港股"""
@@ -221,12 +221,12 @@ class EMarketSourceType(Enum):
     """新浪 国际期货"""
     E_MARKET_SOURCE_sn_futures_gb = 101
 
-    """火币 比特币，莱特币"""
-    E_MARKET_SOURCE_hb_tc = 200
+    """币安 比特币，莱特币"""
+    E_MARKET_SOURCE_bn_tc = 200
 
 
 """默认设置数据源使用E_MARKET_SOURCE_bd"""
-g_market_source = EMarketSourceType.E_MARKET_SOURCE_bd
+g_market_source = EMarketSourceType.E_MARKET_SOURCE_akshare
 
 """自定义的私有数据源类，默认None"""
 g_private_data_source = None

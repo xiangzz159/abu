@@ -8,7 +8,11 @@ from __future__ import division
 from __future__ import print_function
 
 import logging
-from collections import Iterable
+
+try:
+    from collections.abc import Iterable
+except ImportError:
+    from collections import Iterable
 
 import pandas as pd
 
@@ -45,12 +49,12 @@ def _benchmark(df, benchmark, symbol):
     :param symbol: Symbol对象
     :return: 使用基准的时间范围切割返回的金融时间序列
     """
-    if len(df.index & benchmark.kl_pd.index) <= 0:
+    if len(df.index.intersection(benchmark.kl_pd.index)) <= 0:
         # 如果基准benchmark时间范围和输入的df没有交集，直接返回None
         return None
 
     # 两个金融时间序列通过loc寻找交集
-    kl_pd = df.loc[benchmark.kl_pd.index]
+    kl_pd = df.loc[benchmark.kl_pd.index[0] : benchmark.kl_pd.index[-1]]
     # nan的date个数即为不相交的个数
     nan_cnt = kl_pd['date'].isnull().value_counts()
     # 两个金融序列是否相同的结束日期
@@ -105,7 +109,7 @@ def _benchmark(df, benchmark, symbol):
     return kl_pd
 
 
-def _make_kl_df(symbol, data_mode, n_folds, start, end, benchmark, save):
+def _make_kl_df(symbol, data_mode, n_folds, start, end, benchmark, save, period=None):
     """
     针对一个symbol进行数据获取，内部使用kline_pd从本地加载或者指定数据源进行网络请求
     :param symbol: str对象 or Symbol对象
@@ -115,9 +119,10 @@ def _make_kl_df(symbol, data_mode, n_folds, start, end, benchmark, save):
     :param end: 请求的结束日期 str对象
     :param benchmark: 资金回测时间标尺，AbuBenchmark实例对象
     :param save: 是否进行网络获取数据后，直接进行本地保存
+    :param period: 时间间隔
     :return: (df: 金融时间序列pd.DataFrame对象，save_kl_key: 提供外部进行保存)
     """
-    df, save_kl_key = kline_pd(symbol, data_mode, n_folds=n_folds, start=start, end=end, save=save)
+    df, save_kl_key = kline_pd(symbol, data_mode, n_folds=n_folds, start=start, end=end, save=save, period=period)
     if df is not None and df.shape[0] == 0:
         # 把行数＝0的归结为＝None, 方便后续统一处理
         df = None
@@ -244,7 +249,7 @@ def kl_df_dict_parallel(symbols, data_mode=ABuEnv.EMarketDataSplitMode.E_DATA_SP
 
 # noinspection PyDeprecation
 def make_kl_df(symbol, data_mode=ABuEnv.EMarketDataSplitMode.E_DATA_SPLIT_SE,
-               n_folds=2, start=None, end=None, benchmark=None, show_progress=True, parallel=False, parallel_save=True):
+               n_folds=2, start=None, end=None, benchmark=None, show_progress=True, parallel=False, parallel_save=True, period=None):
     """
     外部获取金融时间序列接口
     eg: n_fold=2, start=None, end=None ，从今天起往前数两年
@@ -262,6 +267,7 @@ def make_kl_df(symbol, data_mode=ABuEnv.EMarketDataSplitMode.E_DATA_SPLIT_SE,
     :param show_progress: 是否显示进度条
     :param parallel: 是否并行获取
     :param parallel_save: 是否并行后进行统一批量保存
+    :param period: 数字货币中获取线的时间间隔
     """
 
     if isinstance(symbol, (list, tuple, pd.Series, pd.Index)):
@@ -303,7 +309,7 @@ def make_kl_df(symbol, data_mode=ABuEnv.EMarketDataSplitMode.E_DATA_SPLIT_SE,
     elif isinstance(symbol, Symbol) or isinstance(symbol, six.string_types):
         # 对单个symbol进行数据获取
         df, _ = _make_kl_df(symbol, data_mode=data_mode,
-                            n_folds=n_folds, start=start, end=end, benchmark=benchmark, save=True)
+                            n_folds=n_folds, start=start, end=end, benchmark=benchmark, save=True, period=period)
         return df
     else:
         raise TypeError('symbol type is error')
@@ -361,7 +367,7 @@ def combine_pre_kl_pd(kl_pd, n_folds=1):
     pre_kl_pd = make_kl_df(kl_pd.name, data_mode=ABuEnv.EMarketDataSplitMode.E_DATA_SPLIT_SE, n_folds=n_folds,
                            end=end)
     # 再合并两段时间序列，pre_kl_pd[:-1]跳过重复的end
-    combine_kl = kl_pd if pre_kl_pd is None else pre_kl_pd[:-1].append(kl_pd)
+    combine_kl = kl_pd if pre_kl_pd is None else pd.concat([pre_kl_pd[:-1], kl_pd])
     # 根据combine_kl长度重新进行key计算
     combine_kl['key'] = list(range(0, len(combine_kl)))
     return combine_kl

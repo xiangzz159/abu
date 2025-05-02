@@ -80,7 +80,7 @@ def code_to_symbol(code, rs=True):
         market = EMarketTargetType.E_MARKET_TARGET_HK
         sub_market = EMarketSubType.HK
         return Symbol(market, sub_market, code)
-    elif code.isalpha() and code in all_symbol(EMarketTargetType.E_MARKET_TARGET_TC):
+    elif '/' in code or (code.isalpha() and code in all_symbol(EMarketTargetType.E_MARKET_TARGET_TC)):
         # 全字母且匹配币类市场''btc', 'ltc'
         market = EMarketTargetType.E_MARKET_TARGET_TC
         sub_market = EMarketSubType.COIN

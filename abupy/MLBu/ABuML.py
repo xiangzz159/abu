@@ -1562,7 +1562,7 @@ class AbuML(object):
         """
         return self.estimator.random_forest_classifier_best(self.x, self.y, **kwargs)
 
-    def random_forest_regressor_best(self, **kwargs):
+    def random_forest_regressor_best(self, **kwargs: object) -> object:
         """
         eg：
             random_forest_regressor_best无param_grid参数调用：

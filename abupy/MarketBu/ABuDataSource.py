@@ -12,7 +12,7 @@ import logging
 import numpy as np
 
 from ..MarketBu.ABuDataBase import BaseMarket
-from ..MarketBu.ABuDataFeed import BDApi, TXApi, NTApi, HBApi, SNUSApi, SNFuturesApi, SNFuturesGBApi
+from ..MarketBu.ABuDataFeed import TXApi, NTApi, BNApi, SNUSApi, SNFuturesApi, SNFuturesGBApi, AkShareApi
 from .ABuSymbol import Symbol
 from .ABuSymbol import code_to_symbol
 from ..CoreBu import ABuEnv
@@ -29,15 +29,15 @@ except ImportError:
         """如果没有HDF5环境只能使用其它存贮模式"""
         pass
 
-
 """内置数据源source_dict"""
-source_dict = {EMarketSourceType.E_MARKET_SOURCE_bd.value: BDApi,
-               EMarketSourceType.E_MARKET_SOURCE_tx.value: TXApi,
-               EMarketSourceType.E_MARKET_SOURCE_nt.value: NTApi,
-               EMarketSourceType.E_MARKET_SOURCE_sn_us.value: SNUSApi,
-               EMarketSourceType.E_MARKET_SOURCE_sn_futures.value: SNFuturesApi,
-               EMarketSourceType.E_MARKET_SOURCE_sn_futures_gb.value: SNFuturesGBApi,
-               EMarketSourceType.E_MARKET_SOURCE_hb_tc.value: HBApi}
+source_dict = {
+    EMarketSourceType.E_MARKET_SOURCE_akshare.value: AkShareApi,
+    EMarketSourceType.E_MARKET_SOURCE_tx.value: TXApi,
+    EMarketSourceType.E_MARKET_SOURCE_nt.value: NTApi,
+    EMarketSourceType.E_MARKET_SOURCE_sn_us.value: SNUSApi,
+    EMarketSourceType.E_MARKET_SOURCE_sn_futures.value: SNFuturesApi,
+    EMarketSourceType.E_MARKET_SOURCE_sn_futures_gb.value: SNFuturesGBApi,
+    EMarketSourceType.E_MARKET_SOURCE_bn_tc.value: BNApi}
 
 
 def _calc_start_end_date(df, force_local, n_folds, start, end):
@@ -50,7 +50,8 @@ def _calc_start_end_date(df, force_local, n_folds, start, end):
     :param end: 结束的时间
     :return:
     """
-
+    source_start = start
+    source_end = end
     # 当前今天时间日期str对象，如果是强制本地，即缓存的最后一个交易日
     today = ABuDateUtil.timestamp_to_str(df.index[-1]) if force_local else ABuDateUtil.current_str_date()
     if end is None:
@@ -93,11 +94,15 @@ def _calc_start_end_date(df, force_local, n_folds, start, end):
             df_start_int = ABuDateUtil.date_str_to_int(df_start)
         except Exception as e:
             logging.exception(e)
+    if ABuEnv.g_market_source == EMarketSourceType.E_MARKET_SOURCE_bn_tc:
+        # 数字货币不计算开始和结束时间
+        end = source_end
+        start = source_start
 
     return end, end_int, df_end_int, start, start_int, df_start_int
 
 
-def kline_pd(symbol, data_mode, n_folds=2, start=None, end=None, save=True):
+def kline_pd(symbol, data_mode, n_folds=2, start=None, end=None, save=True, period=None):
     """
     统一调度选择内部或者外部数据源，决策是否本地数据读取，还是网络数据读取，以及根据不
     同的数据获取模式，调整数据的选择范围
@@ -115,6 +120,7 @@ def kline_pd(symbol, data_mode, n_folds=2, start=None, end=None, save=True):
     :param start: 开始时间 start为None时，start会根据end和n_fold计算出来，str对象
     :param end: 结束时间，str对象
     :param save: 从网络下载后是否缓存到本地
+    :param period: 时间间隔
     """
     try:
         if isinstance(symbol, Symbol):
@@ -171,7 +177,7 @@ def kline_pd(symbol, data_mode, n_folds=2, start=None, end=None, save=True):
         if ABuEnv.g_data_fetch_mode == EMarketDataFetchMode.E_DATA_FETCH_FORCE_NET:
             # 如果是强制走网络，直接请求使用load_kline_df_net
             return load_kline_df_net(source, temp_symbol, n_folds=n_folds, start=start, end=end, start_int=start_int,
-                                     end_int=end_int, save=save), save_kl_key
+                                     end_int=end_int, save=save, period=period), save_kl_key
 
         # 检测本地缓存数据是否满足需要，如果需要的数据在存储的数据之间，则可切片放回
         match = False

@@ -136,6 +136,22 @@ def fix_date(date_str):
         date_str = "%s-%s-%s" % (y, m, d)
     return date_str
 
+def timestamp_2_timedate(timestamp_str: str):
+    """
+    将时间戳转换成日期
+    Parameters
+    ----------
+    timestamp
+
+    Returns
+    -------
+
+    """
+    timestamp = int(timestamp_str) / 1000 if len(timestamp_str) == 13 else int(timestamp_str)
+    # 将时间戳转换为 datetime 对象
+    # 将 datetime 对象格式化为 yyyy-mm-dd HH:mm:ss 格式的字符串
+    format_time = datetime.datetime.fromtimestamp(int(timestamp)).strftime('%Y-%m-%d %H:%M:%S')
+    return format_time
 
 def fmt_date(convert_date):
     """
@@ -163,6 +179,8 @@ def fmt_date(convert_date):
             # 201611 to 2016-01-01
             convert_date = "%s-0%s-0%s" % (convert_date[0:4],
                                            convert_date[4:5], convert_date[5:6])
+        elif len(convert_date) == 13 or len(convert_date) == 10:
+            convert_date = timestamp_2_timedate(convert_date)
         else:
             raise ValueError('fmt_date: convert_date fmt error {}'.format(convert_date))
     return convert_date

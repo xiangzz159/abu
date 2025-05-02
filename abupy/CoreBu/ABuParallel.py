@@ -13,6 +13,8 @@ from __future__ import print_function
 
 import functools
 
+import pandas as pd
+
 from ..CoreBu import ABuEnv
 
 __author__ = '阿布'

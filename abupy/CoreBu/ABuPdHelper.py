@@ -8,8 +8,10 @@ from __future__ import division
 from __future__ import print_function
 
 import functools
-from collections import Iterable
-
+try:
+    from collections.abc import Iterable
+except ImportError:
+    from collections import Iterable
 import pandas as pd
 from ..CoreBu.ABuFixes import partial
 from ..CoreBu.ABuFixes import six
@@ -31,7 +33,7 @@ except ImportError:
 
 try:
     # noinspection PyUnresolvedReferences
-    from pandas.core.window import EWM
+    from pandas.core.window import ewm
     g_pandas_has_ewm = True
 except ImportError:
     g_pandas_has_ewm = False

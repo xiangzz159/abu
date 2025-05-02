@@ -245,6 +245,9 @@ class AbuCapital(PickleStateMixin):
         # 买单时间转换成pd时间日期对象
         time_ind = pd.to_datetime(ABuDateUtil.fmt_date(a_order.buy_date))
         # pd时间日期对象置换出对应的index number
+        if time_ind not in self.capital_pd.index.tolist():
+            return False
+
         num_index = self.capital_pd.index.tolist().index(time_ind)
 
         # cash_blance初始化init中除了第一个其它都是nan
@@ -307,6 +310,8 @@ class AbuCapital(PickleStateMixin):
         # 卖单时间转换成pd时间日期对象
         time_ind = pd.to_datetime(ABuDateUtil.fmt_date(a_order.sell_date))
         # # pd时间日期对象置换出对应的index number
+        if time_ind not in self.capital_pd.index.tolist():
+            return False
         num_index = self.capital_pd.index.tolist().index(time_ind)
         # 根据a_order.expect_direction确定是要更新call的持仓量还是put的持仓量
         buy_type_keep = '_call_keep' if a_order.expect_direction == 1.0 else '_put_keep'

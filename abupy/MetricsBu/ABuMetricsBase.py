@@ -352,15 +352,17 @@ class AbuMetricsBase(object):
 
         if only_info:
             return
-
-        self.benchmark_cum_returns.plot()
-        self.algorithm_cum_returns.plot()
-        plt.legend(['benchmark returns', 'algorithm returns'], loc='best')
+        x = self.benchmark_returns.index
+        y1 = self.benchmark_cum_returns
+        y2 = self.algorithm_cum_returns
+        plt.plot(x, y1, label='benchmark returns')
+        plt.plot(x, y2, label='algorithm returns')
+        plt.legend(loc='best')
         plt.show()
 
         if only_show_returns:
             return
-        sns.regplot(x=np.arange(0, len(self.algorithm_cum_returns)), y=self.algorithm_cum_returns.values)
+        sns.regplot(x=np.arange(0, len(self.algorithm_cum_returns)), y=self.algorithm_cum_returns)
         plt.show()
         sns.distplot(self.capital.capital_pd['capital_blance'], kde_kws={"lw": 3, "label": "capital blance kde"})
         plt.show()
